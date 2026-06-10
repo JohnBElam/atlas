@@ -1,0 +1,138 @@
+---
+description: ATLAS Phase 1 standing conventions — slice discipline, API patterns, and stack rules
+globs:
+alwaysApply: true
+---
+
+# ATLAS Phase 1 Rules
+
+Read [`docs/SPEC.md`](../docs/SPEC.md), [`docs/BUILD_PLAN.md`](../docs/BUILD_PLAN.md), and [`docs/DECISIONS.md`](../docs/DECISIONS.md) before making changes.
+
+## Slice discipline
+
+- **One BUILD_PLAN slice per session.** Identify the current slice (S01–S16) before writing code.
+- **Never start slice N+1 while slice N acceptance checks fail.**
+- Each slice must end in running software testable via curl and/or browser per BUILD_PLAN.
+- When implementation conflicts appear, **prefer the smaller working version**.
+
+## No placeholders
+
+- **No routes, pages, sidebar items, or modules outside the current slice.**
+- Sidebar nav grows as slices deliver modules (Sources → Datasets → …).
+- Do not scaffold future slices "for convenience."
+
+## Stubs only where spec marks them
+
+- `SparkEngine`: all methods raise `NotImplementedError`; registered in `ENGINES` dict.
+- Unsupported connectors (`mysql`, `s3`, `snowflake`, `bigquery`, `rest_api`, `kafka`): stub classes raising `NotImplementedError`.
+- Do not implement Phase 2 features behind feature flags.
+
+## Backend architecture
+
+### API envelope
+
+All responses use:
+
+```json
+{ "data": T | null, "error": string | null, "meta": {} }
+```
+
+- **Never HTTP 200 with an error message.** Use 400, 404, 409, 500 as appropriate.
+- `meta` carries pagination: `{ page, page_size, total, total_pages }`.
+
+### Services-only business logic
+
+- Routes: validate input → call service → return envelope. **Nothing else.**
+- All business logic lives in `app/services/`.
+- Service methods are async; use `async with db.begin():` for writes.
+- Never return SQLAlchemy models from services; convert to Pydantic schemas.
+- Write `audit_events` on create, update, soft-delete, and pipeline run.
+
+### Credentials
+
+- Decrypt source config **only** inside the service layer.
+- **Never log or return decrypted credentials**, including in error messages or stack traces surfaced to clients.
+
+### Soft delete
+
+- All mutable entity queries filter `deleted_at IS NULL` by default.
+- **No hard deletes** on mutable entities.
+- **No `ON DELETE CASCADE`** anywhere.
+- Append-only tables (`pipeline_runs`, `lineage_event_inputs`, `audit_events`) have no soft delete and no DELETE API in Phase 1.
+- Reject operations referencing soft-deleted parents (400/404).
+
+### Configuration
+
+- All endpoints, paths, ports, buckets, and secrets via **pydantic-settings** and env vars.
+- **Application code must not assume localhost.** Localhost appears only in `.env`, `.env.example`, and `docker-compose.yml`.
+
+### SQLAlchemy & Celery
+
+- SQLAlchemy 2.0 style: use `select()`, not legacy `db.query()`.
+- FastAPI uses **async** SQLAlchemy (`DATABASE_URL` with asyncpg).
+- Celery workers use **sync** SQLAlchemy (`CELERY_DATABASE_URL` with psycopg2).
+- Celery tasks are thin wrappers: instantiate services, call methods, no business logic in tasks.
+
+### Compute
+
+- All execution through `ComputeEngine` protocol.
+- Phase 1 default: `DuckDBEngine` only.
+- CTE builder: sanitize identifiers, quote columns, parameterize filter values, wrap derive expressions.
+
+### Testing gates
+
+Before marking pipeline slice (S06) done:
+
+- `tests/test_dag_validation.py`
+- `tests/test_transform_sql.py`
+- `tests/test_response_envelope.py`
+
+must pass.
+
+## Frontend architecture
+
+- **TypeScript strict mode.** No `any`. No `as unknown as X`.
+- **TanStack Query** for all server state. Hooks live in `src/api/` only.
+- **Zustand** for UI state only (`lineage-store`, `workshop-store`). Never store server data in Zustand.
+- **Never call axios directly in components.** Use TanStack Query hooks from `src/api/`.
+- Base URL from `VITE_API_URL` env var.
+- React Flow canvases: call `fitView` on mount.
+- TanStack Virtual for tables above 500 rows.
+- Forms: react-hook-form + zod.
+- Skeleton loaders on async fetches; error boundaries on page components.
+
+## Design system (Workshop + graphs)
+
+- Zinc/indigo palette per SPEC. Sharp corners on data containers. No box shadows.
+- Lineage nodes: blue (dataset), green (source), orange (pipeline) — not default React Flow styling.
+
+## Lineage & ontology (non-negotiable)
+
+- Lineage graph from `lineage_events` + `lineage_event_inputs` only. Snapshots are supplementary evidence.
+- Ontology object browsing requires primary key. Multi-dataset types need PK mapped on every dataset. No join inference. Incomplete mappings → 400.
+
+## Workshop build order
+
+Do not start a later widget until the previous works end-to-end:
+
+1. Dashboard CRUD (S10)
+2. Table widget (S11)
+3. Metric card (S12)
+4. Bar chart (S13)
+5. Dropdown filter + layout (S14)
+6. Text widget (S15)
+
+Phase 1 widget binding: `source_type: 'dataset'` only.
+
+## Future scale
+
+- Design for Iceberg, ComputeEngine seam, Connector protocol, tenancy columns, and paginated APIs.
+- **Do not claim Phase 1 handles billions of rows or thousands of concurrent users.**
+
+## Phase 1 non-goals
+
+Do not implement: auth, RBAC, scheduling, public sharing, Spark execution, join/aggregate nodes, link traversal UI, production connectors beyond CSV/Parquet/PostgreSQL, audit UI, AI, high-concurrency serving, `ontology_query` binding.
+
+## Commits
+
+Only commit when the user explicitly asks.
