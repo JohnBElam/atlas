@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import math
 import uuid
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from typing import Any
 
 from cryptography.fernet import Fernet, InvalidToken
@@ -183,7 +183,7 @@ class SourceService:
         if not changes:
             return self._to_response(source)
 
-        source.updated_at = datetime.now(UTC)
+        source.updated_at = datetime.now(timezone.utc)
         try:
             await self._audit.write(
                 db,
@@ -200,8 +200,8 @@ class SourceService:
 
     async def delete_source(self, db: AsyncSession, source_id: uuid.UUID) -> None:
         source = await self._get_active_source(db, source_id)
-        source.deleted_at = datetime.now(UTC)
-        source.updated_at = datetime.now(UTC)
+        source.deleted_at = datetime.now(timezone.utc)
+        source.updated_at = datetime.now(timezone.utc)
         await self._audit.write(
             db,
             action="soft_delete",
@@ -268,7 +268,7 @@ class SourceService:
         except NotImplementedError as exc:
             raise ConnectorNotImplementedError(str(exc)) from exc
 
-        discovered_at = datetime.now(UTC)
+        discovered_at = datetime.now(timezone.utc)
         cache_payload = {
             "tables": [table.model_dump() for table in tables],
         }
@@ -308,7 +308,7 @@ class SourceService:
 
         storage = get_minio_storage()
         uploaded_name = storage.upload_file(source.id, safe_filename, content)
-        source.updated_at = datetime.now(UTC)
+        source.updated_at = datetime.now(timezone.utc)
         await self._commit_write(db)
         await db.refresh(source)
         return UploadResponse(uploaded=True, filename=uploaded_name)

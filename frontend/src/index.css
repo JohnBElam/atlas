@@ -1,0 +1,32 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  margin: 0;
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  background: #09090b;
+  color: #fafafa;
+}
+
+.font-data {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+.react-flow {
+  --xy-background-color: #09090b;
+  --xy-node-background-color: transparent;
+  --xy-edge-stroke: #52525b;
+  --xy-controls-button-background-color: #18181b;
+  --xy-controls-button-background-color-hover: #27272a;
+  --xy-controls-button-color: #a1a1aa;
+  --xy-controls-button-border-color: #52525b;
+}
+
+.react-flow__controls button {
+  border-radius: 0;
+}
+
+.react-flow__edge-text {
+  fill: #a1a1aa;
+}
