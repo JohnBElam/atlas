@@ -7,11 +7,30 @@ import {
   useUpdateObjectType,
 } from "@/api/ontology";
 import { putEnvelope } from "@/api/client";
-import type { ObjectProperty } from "@/types/ontology";
+import { getErrorMessage } from "@/lib/errors";
+import type { ObjectProperty, ObjectType } from "@/types/ontology";
 import { AppShell } from "@/components/layout/AppShell";
 import { ObjectBrowser } from "@/components/ontology/ObjectBrowser";
 import { PropertyMapper } from "@/components/ontology/PropertyMapper";
 import { Skeleton } from "@/components/ui/Skeleton";
+
+function getBrowserBlockedReason(
+  type: ObjectType,
+  properties: ObjectProperty[],
+): string | null {
+  if (properties.length === 0) {
+    return "Add at least one property with a dataset and column mapping.";
+  }
+  const unmapped = properties.filter((p) => !p.dataset_id || !p.column_name);
+  if (unmapped.length > 0) {
+    const names = unmapped.map((p) => p.display_name).join(", ");
+    return `Map all properties to dataset columns (${names} incomplete).`;
+  }
+  if (!type.primary_key_property_id) {
+    return "Set a primary key on one of the mapped properties.";
+  }
+  return null;
+}
 
 export function ObjectTypeDetailPage({ id }: { id: string }) {
   const { data, isLoading } = useObjectType(id);
@@ -32,11 +51,15 @@ export function ObjectTypeDetailPage({ id }: { id: string }) {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["ontology", "types", id] }),
   });
   const [page, setPage] = useState(1);
+  const [addPropertyError, setAddPropertyError] = useState<string | null>(null);
+  const [addResetSignal, setAddResetSignal] = useState(0);
+  const browserBlockedReason = data ? getBrowserBlockedReason(data.type, data.properties) : null;
+  const browserReady = !!data && browserBlockedReason === null;
   const {
     data: objectsResult,
     isLoading: objectsLoading,
     error: objectsError,
-  } = useObjectList(id, page);
+  } = useObjectList(id, page, browserReady);
 
   if (isLoading) {
     return (
@@ -66,7 +89,18 @@ export function ObjectTypeDetailPage({ id }: { id: string }) {
             properties={properties}
             primaryKeyId={type.primary_key_property_id}
             loading={createProperty.isPending}
-            onAdd={(body) => createProperty.mutate(body)}
+            addError={addPropertyError}
+            addResetSignal={addResetSignal}
+            onAdd={(body) => {
+              setAddPropertyError(null);
+              createProperty.mutate(body, {
+                onSuccess: () => {
+                  setAddPropertyError(null);
+                  setAddResetSignal((n) => n + 1);
+                },
+                onError: (err) => setAddPropertyError(getErrorMessage(err)),
+              });
+            }}
             onUpdate={(propertyId, body) => updateProperty.mutate({ propertyId, body })}
             onSetPrimaryKey={(propertyId) =>
               updateType.mutate({ primary_key_property_id: propertyId })
@@ -79,10 +113,9 @@ export function ObjectTypeDetailPage({ id }: { id: string }) {
           <ObjectBrowser
             columns={objectsResult?.data?.columns ?? []}
             rows={objectsResult?.data?.rows ?? []}
-            loading={objectsLoading}
-            error={
-              objectsError instanceof Error ? objectsError.message : null
-            }
+            loading={browserReady && objectsLoading}
+            notice={browserBlockedReason}
+            error={objectsError ? getErrorMessage(objectsError) : null}
             page={page}
             totalPages={totalPages}
             onPageChange={setPage}

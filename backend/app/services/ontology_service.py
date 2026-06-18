@@ -190,8 +190,8 @@ class OntologyService:
         type_id: uuid.UUID,
         body: ObjectPropertyCreate,
     ) -> ObjectPropertyResponse:
-        await self._get_active_type(db, type_id)
         async with db.begin():
+            await self._get_active_type(db, type_id)
             prop = ObjectProperty(
                 object_type_id=type_id,
                 name=body.name,

@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { getEnvelope, postEnvelope, putEnvelope } from "./client";
 import type {
+  LinkCardinality,
   LinkType,
   ObjectList,
   ObjectProperty,
@@ -101,7 +102,7 @@ export function useOntologyGraph() {
   });
 }
 
-export function useObjectList(typeId: string, page = 1) {
+export function useObjectList(typeId: string, page = 1, enabled = true) {
   return useQuery({
     queryKey: ["ontology", "types", typeId, "objects", page],
     queryFn: async () => {
@@ -111,7 +112,7 @@ export function useObjectList(typeId: string, page = 1) {
       });
       return { data: res.data, meta: res.meta };
     },
-    enabled: !!typeId,
+    enabled: !!typeId && enabled,
     retry: false,
   });
 }
@@ -123,5 +124,24 @@ export function useLinkTypes() {
       const res = await getEnvelope<LinkType[]>("/ontology/links");
       return res.data ?? [];
     },
+  });
+}
+
+export function useCreateLink() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (body: {
+      name: string;
+      display_name: string;
+      from_object_type_id: string;
+      to_object_type_id: string;
+      cardinality: LinkCardinality;
+      from_property_id: string;
+      to_property_id: string;
+    }) => {
+      const res = await postEnvelope<LinkType>("/ontology/links", body);
+      return res.data;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["ontology"] }),
   });
 }

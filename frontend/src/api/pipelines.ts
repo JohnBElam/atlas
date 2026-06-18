@@ -98,14 +98,14 @@ export function useRunPipeline(pipelineId: string) {
   });
 }
 
-export function useRunLogs(runId: string, since: number) {
+export function useRunLogs(runId: string, since: number, enabled = true) {
   return useQuery({
     queryKey: ["pipeline-runs", runId, "logs", since],
     queryFn: async () => {
       const res = await getEnvelope<RunLogs>(`/pipelines/runs/${runId}/logs`, { since });
       return res.data;
     },
-    enabled: !!runId,
-    refetchInterval: 2000,
+    enabled: enabled && !!runId,
+    refetchInterval: enabled ? 2000 : false,
   });
 }

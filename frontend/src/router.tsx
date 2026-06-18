@@ -11,6 +11,9 @@ import { DatasetsPage } from "@/pages/Datasets";
 import { LineagePage } from "@/pages/Lineage";
 import { ObjectTypeDetailPage } from "@/pages/ObjectTypeDetail";
 import { OntologyPage } from "@/pages/Ontology";
+import { DashboardBuilderPage } from "@/pages/DashboardBuilder";
+import { DashboardViewerPage } from "@/pages/DashboardViewer";
+import { WorkshopPage } from "@/pages/Workshop";
 import { PipelineBuilderPage } from "@/pages/PipelineBuilder";
 import { PipelineDetailPage } from "@/pages/PipelineDetail";
 import { PipelinesPage } from "@/pages/Pipelines";
@@ -111,6 +114,30 @@ const objectTypeDetailRoute = createRoute({
   },
 });
 
+const workshopRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/workshop",
+  component: WorkshopPage,
+});
+
+const dashboardBuilderRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/workshop/$id/edit",
+  component: function DashboardBuilderRoute() {
+    const { id } = dashboardBuilderRoute.useParams();
+    return <DashboardBuilderPage id={id} />;
+  },
+});
+
+const dashboardViewerRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/workshop/$id/view",
+  component: function DashboardViewerRoute() {
+    const { id } = dashboardViewerRoute.useParams();
+    return <DashboardViewerPage id={id} />;
+  },
+});
+
 const routeTree = rootRoute.addChildren([
   indexRoute,
   sourcesRoute,
@@ -124,6 +151,9 @@ const routeTree = rootRoute.addChildren([
   datasetLineageRoute,
   ontologyRoute,
   objectTypeDetailRoute,
+  workshopRoute,
+  dashboardBuilderRoute,
+  dashboardViewerRoute,
 ]);
 
 export const router = createRouter({ routeTree });
