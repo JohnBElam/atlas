@@ -5,6 +5,7 @@ export function ObjectBrowser({
   columns,
   rows,
   loading,
+  notice,
   error,
   page,
   totalPages,
@@ -13,6 +14,7 @@ export function ObjectBrowser({
   columns: string[];
   rows: Record<string, unknown>[];
   loading?: boolean;
+  notice?: string | null;
   error?: string | null;
   page: number;
   totalPages: number;
@@ -23,6 +25,14 @@ export function ObjectBrowser({
       <div className="space-y-2">
         <Skeleton className="h-8 w-full" />
         <Skeleton className="h-8 w-full" />
+      </div>
+    );
+  }
+
+  if (notice) {
+    return (
+      <div className="border border-zinc-700 bg-zinc-900 p-4 text-sm text-zinc-400">
+        {notice}
       </div>
     );
   }

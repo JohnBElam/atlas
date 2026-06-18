@@ -3,6 +3,7 @@ import {
   Database,
   GitBranch,
   Layers,
+  LayoutDashboard,
   Network,
   Shapes,
 } from "lucide-react";
@@ -14,6 +15,7 @@ const navItems = [
   { to: "/pipelines", label: "Pipelines", icon: GitBranch },
   { to: "/lineage", label: "Lineage", icon: Network },
   { to: "/ontology", label: "Ontology", icon: Shapes },
+  { to: "/workshop", label: "Workshop", icon: LayoutDashboard },
 ] as const;
 
 export function Sidebar() {

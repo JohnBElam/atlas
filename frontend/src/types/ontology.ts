@@ -30,13 +30,15 @@ export interface ObjectTypeDetail {
   properties: ObjectProperty[];
 }
 
+export type LinkCardinality = "one-to-one" | "one-to-many" | "many-to-many";
+
 export interface LinkType {
   id: string;
   name: string;
   display_name: string;
   from_object_type_id: string;
   to_object_type_id: string;
-  cardinality: string;
+  cardinality: LinkCardinality;
   from_property_id: string;
   to_property_id: string;
   description: string | null;

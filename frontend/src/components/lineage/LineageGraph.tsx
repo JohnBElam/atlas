@@ -8,9 +8,13 @@ import {
   type Node,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import { useEffect } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import type { LineageGraph as LineageGraphType } from "@/types/lineage";
 import { FlowCanvas } from "@/components/flow/FlowCanvas";
+import {
+  resolveLineageLayout,
+  updateLineagePosition,
+} from "@/lib/lineage-layout";
 import { LineageNode } from "./LineageNode";
 
 const nodeTypes = { lineage: LineageNode };
@@ -22,6 +26,7 @@ export function LineageGraph({
   graph: LineageGraphType;
   onNodeClick: (nodeId: string) => void;
 }) {
+  const layout = useMemo(() => resolveLineageLayout(graph), [graph]);
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
 
@@ -30,7 +35,7 @@ export function LineageGraph({
       graph.nodes.map((n) => ({
         id: n.id,
         type: "lineage",
-        position: n.position,
+        position: layout.positions[n.id] ?? { x: 0, y: 0 },
         data: n.data as unknown as Record<string, unknown>,
       })),
     );
@@ -42,18 +47,27 @@ export function LineageGraph({
         label: e.label ?? undefined,
       })),
     );
-  }, [graph, setNodes, setEdges]);
+  }, [graph, layout, setNodes, setEdges]);
+
+  const onNodeDragStop = useCallback(
+    (_: MouseEvent | TouchEvent, node: Node) => {
+      updateLineagePosition(node.id, node.position);
+    },
+    [],
+  );
 
   return (
     <div className="h-[600px] border border-zinc-700 bg-zinc-950">
-      <FlowCanvas nodeCount={nodes.length}>
+      <FlowCanvas nodeCount={nodes.length} fitView={layout.shouldFitView}>
         <ReactFlow
           nodes={nodes}
           edges={edges}
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
+          onNodeDragStop={onNodeDragStop}
           nodeTypes={nodeTypes}
           onNodeClick={(_, node) => onNodeClick(node.id)}
+          nodesConnectable={false}
           colorMode="dark"
           proOptions={{ hideAttribution: true }}
         >
